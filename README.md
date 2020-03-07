@@ -1,10 +1,11 @@
 # Pacman Mirrors Rust
-This is a port of the Manjaro pacman-mirrors tool written in python.
+This is a port to Rust of the Manjaro pacman-mirrors tool originally
+written in python.
 
 ## Usage
 Right now, the feature set is really incomplete but I aim to achieve
 parity with the python tool with minor differences, such as a default
-timeout in fasttrack mode.
+timeout in `fasttrack` mode.
 
 ## Build
 To build the tool you can just use the following:
