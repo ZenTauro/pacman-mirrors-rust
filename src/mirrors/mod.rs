@@ -16,4 +16,4 @@
 // Authors: ZenTauro <zentauro@riseup.net>
 
 pub mod mirror;
-pub use mirror::*;
+pub use self::mirror::*;

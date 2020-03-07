@@ -15,10 +15,16 @@
 //
 // Authors: ZenTauro <zentauro@riseup.net>
 
-mod config_fn;
-mod http_fn;
-mod check_network;
+use surf::get;
+use crate::mirrors::MirrorJSON;
 
-pub use self::config_fn::*;
-pub use self::http_fn::*;
-pub use self::check_network::*;
+pub async fn build_initial_list() {
+    let resp = get("https://gitlab.manjaro.org/webpage/manjaro-web-repo/-/raw/master/mirrors.json")
+        .recv_json::<Vec<MirrorJSON>>()
+        .await;
+
+    match resp {
+        Ok(o) => info!("Initial response succeeded with {:?}", o),
+        Err(e) => error!("Initial response failed with {:?}", e),
+    }
+}

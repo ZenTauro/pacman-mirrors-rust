@@ -15,10 +15,12 @@
 //
 // Authors: ZenTauro <zentauro@riseup.net>
 
-mod config_fn;
-mod http_fn;
-mod check_network;
+mod fasttrack;
+mod mirror_list;
 
-pub use self::config_fn::*;
-pub use self::http_fn::*;
-pub use self::check_network::*;
+pub use fasttrack::*;
+pub use mirror_list::*;
+
+trait MirrorListBuilder {
+    fn build(limit: u32) -> Vec<String>;
+}

@@ -15,11 +15,11 @@
 //
 // Authors: ZenTauro <zentauro@riseup.net>
 
-use config;
+// use config;
 
 enum Method {
-    rank,
-    random,
+    Rank,
+    Random,
 }
 
 struct Config {
@@ -43,13 +43,13 @@ struct Config {
     x32:              bool,        // False
 }
 
-impl Config {
-    pub fn default() -> Config {
-        Config {
-            branch: "stable".to_owned(),
-            branches: ,
-        }
-    }
-}
+// impl Config {
+//     pub fn default() -> Config {
+//         Config {
+//             branch: "stable".to_owned(),
+//             branches: ,
+//         }
+//     }
+// }
 
-pub fn setup_config() -> ()
+pub fn setup_config() {}

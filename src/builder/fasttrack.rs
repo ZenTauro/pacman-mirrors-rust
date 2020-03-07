@@ -15,10 +15,29 @@
 //
 // Authors: ZenTauro <zentauro@riseup.net>
 
-mod config_fn;
-mod http_fn;
-mod check_network;
+use crate::functions::mirror_response;
+use async_std::task;
+use async_std::sync::{channel, Receiver};
 
-pub use self::config_fn::*;
-pub use self::http_fn::*;
-pub use self::check_network::*;
+pub async fn build_mirror_list(mirror_list: &Vec<String>) -> Receiver<(String, f32)> {
+    let (s, r) = channel(mirror_list.len());
+
+    for mirror in mirror_list {
+        let m = mirror.clone();
+        let sc = s.clone();
+
+        task::spawn(async move {
+            match mirror_response(&m, 10).await {
+                Ok(res) => {
+                    sc.send((
+                        m.clone(),
+                        res
+                    )).await;
+                }
+                Err(_) => (),
+            }
+        });
+    }
+
+    r
+}

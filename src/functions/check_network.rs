@@ -15,10 +15,34 @@
 //
 // Authors: ZenTauro <zentauro@riseup.net>
 
-mod config_fn;
-mod http_fn;
-mod check_network;
+use crate::config;
+use async_std::task;
 
-pub use self::config_fn::*;
-pub use self::http_fn::*;
-pub use self::check_network::*;
+pub async fn is_networkup() -> bool {
+    let mut tasks = Vec::with_capacity(config::INET_CONN_CHECK_URLS.len());
+    for url in &config::INET_CONN_CHECK_URLS {
+        let url = (*url).to_string();
+        tasks.push(task::spawn(async move {
+            surf::get(url).recv_string().await
+        }));
+    }
+
+    let mut res = Vec::with_capacity(config::INET_CONN_CHECK_URLS.len());
+
+    task::block_on(async {
+        for t in tasks {
+            match t.await {
+                Ok(_) => { res.push(true) },
+                Err(_) => { res.push(false) },
+            }
+        }
+    });
+
+    for v in res {
+        if v {
+            return true;
+        }
+    };
+
+    false
+}

@@ -15,6 +15,32 @@
 //
 // Authors: ZenTauro <zentauro@riseup.net>
 
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize)]
+pub struct MirrorJSON {
+    pub country: String,
+    pub url: String,
+    pub protocols: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Protocols {
+    pub https: bool,
+    pub http: bool,
+    pub ftp: bool,
+}
+
+impl Protocols {
+    pub fn new() -> Protocols {
+        Protocols {
+            https: false,
+            http: false,
+            ftp: false,
+        }
+    }
+}
+
 /// Represents the mirror and response time
 #[derive(Debug)]
 pub struct Mirror {
@@ -24,7 +50,7 @@ pub struct Mirror {
     pub url: String,
     /// An array of the different protocols available to access
     /// the mirror
-    pub protocols: Vec<String>,
+    pub protocols: Protocols,
     /// The branches available, stable, testing or unstable
     pub branches: Vec<Option<String>>,
     /// Time since last sync
@@ -34,10 +60,10 @@ pub struct Mirror {
 }
 
 impl Mirror {
-    fn new(
+    pub fn new(
         country: String,
         url: String,
-        protocols: Vec<String>,
+        protocols: Protocols,
         branches: Vec<Option<String>>,
         last_sync: Option<String>,
         resp_time: Option<u64>,
@@ -51,4 +77,72 @@ impl Mirror {
             resp_time,
         }
     }
+
+    pub fn from_mirror(mir: &MirrorJSON) -> Mirror {
+        let mut prots = Protocols::new();
+
+        for prot in &mir.protocols[..] {
+            match &prot[..] {
+                "https" => prots.https = true,
+                "http" => prots.http = true,
+                "ftp" => prots.ftp = true,
+                protocol => panic!("Unknown protocol {}", protocol),
+            }
+        }
+
+        Mirror {
+            country: mir.country.clone(),
+            url: mir.url.clone(),
+            protocols: prots,
+            branches: Vec::new(),
+            last_sync: None,
+            resp_time: None,
+        }
+    }
+}
+
+pub async fn fetch_mirrors() -> Vec<Mirror> {
+    let mirrors: Vec<MirrorJSON> = serde_json::from_str(
+        &surf::get(crate::config::URL_MIRROR_JSON)
+            .await
+            .unwrap()
+            .body_string()
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+
+    mirrors.iter().map(|m| Mirror::from_mirror(m)).collect()
+}
+
+pub async fn fetch_mirs() -> Vec<String> {
+    let mirrors: Vec<MirrorJSON> = serde_json::from_str(
+        &surf::get(crate::config::URL_MIRROR_JSON)
+            .await
+            .unwrap()
+            .body_string()
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+
+    mirrors
+        .iter()
+        .filter(|m| {
+            let mut has_https = false;
+
+            for prot in &m.protocols[..] {
+                match &prot[..] {
+                    "https" => {
+                        has_https = true;
+                        break;
+                    }
+                    _ => continue,
+                }
+            }
+
+            has_https
+        })
+        .map(|m| m.url.clone())
+        .collect()
 }

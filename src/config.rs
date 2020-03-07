@@ -20,7 +20,9 @@
 pub static TEST_FILE: &str = "core.db.tar.gz";
 pub static USER_AGENT: &str = "Pacman-Mirrors/";
 pub static URL_MIRROR_JSON: &str =
-    "https://gitlab.manjaro.org/tools/maintenance-tools/manjaro-web-repo/raw/master/mirrors.json";
+    "https://gitlab.manjaro.org/webpage/manjaro-web-repo/-/raw/master/mirrors.json";
+    // "https://gitlab.manjaro.org/tools/maintenance-tools/manjaro-web-repo/raw/master/mirrors.json";
+
 pub static URL_STATUS_JSON: &str = "http://repo.manjaro.org/status.json";
 pub static INET_CONN_CHECK_URLS: [&str; 3] =
     ["https://gitlab.manjaro.org",
