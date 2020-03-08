@@ -15,12 +15,11 @@
 //
 // Authors: ZenTauro <zentauro@riseup.net>
 
-mod config_fn;
-mod http_fn;
-mod check_network;
-mod mirror_file;
-
-pub use self::config_fn::*;
-pub use self::http_fn::*;
-pub use self::check_network::*;
-pub use self::mirror_file::*;
+pub fn build_filestring(ordered: Vec<String>) -> String {
+    ordered
+        .iter()
+        .map(|v| format!("Server = {}stable/$repo/$arch", v).to_string())
+        .fold(String::new(), |p, n| {
+            p.to_owned() + "\n" + &n.to_owned()
+        })
+}

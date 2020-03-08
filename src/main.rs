@@ -28,6 +28,7 @@ use crate::builder::build_initial_list;
 use crate::builder::build_mirror_list;
 use crate::functions::*;
 use clap::{App, Arg};
+use colored::*;
 use pacman_mirrors::PacmanMirrors;
 use pretty_env_logger as logger;
 use std::io;
@@ -91,15 +92,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         )));
     }
 
-    dbg!(build_initial_list().await);
-    dbg!(mirror_response("http://google.com", 2).await?);
-
     let mirs = mirrors::fetch_mirs().await;
     let received = build_mirror_list(&mirs).await;
+    let mut res = Vec::new();
 
-    while let Some(m) = received.recv().await {
-        dbg!(m);
+    while let Some((val, timestamp)) = received.recv().await {
+        let col = if timestamp < 2.0 {
+            format!("{:.5}", timestamp).green()
+        } else {
+            format!("{:.5}", timestamp).red()
+        };
+
+        eprintln!("    {} - {}", col, val);
+        res.push(val);
     }
+
+    println!("{}", build_filestring(res));
 
     Ok(())
 }
