@@ -16,27 +16,44 @@
 // Authors: ZenTauro <zentauro@riseup.net>
 
 use crate::functions::mirror_response;
-use async_std::task;
+use async_std::io;
 use async_std::sync::{channel, Receiver};
+use async_std::task;
+use std::time::Duration;
 
-pub async fn build_mirror_list(mirror_list: &Vec<String>) -> Receiver<(String, f32)> {
+pub async fn build_mirror_list(
+    mirror_list: &Vec<String>,
+    timeout: Option<Duration>,
+) -> Receiver<(String, f32)> {
     let (s, r) = channel(mirror_list.len());
 
     for mirror in mirror_list {
         let m = mirror.clone();
         let sc = s.clone();
 
-        task::spawn(async move {
-            match mirror_response(&m, 10).await {
-                Ok(res) => {
-                    sc.send((
-                        m.clone(),
-                        res
-                    )).await;
+        info!("Timeout is: {:?}", timeout);
+
+        if let Some(t) = timeout {
+            info!("Spawining with timeout {:?}", t);
+            task::spawn(io::timeout(t, async move {
+                match mirror_response(&m, 10).await {
+                    Ok(res) => {
+                        sc.send((m.clone(), res)).await;
+                    }
+                    Err(_) => (),
                 }
-                Err(_) => (),
-            }
-        });
+                Ok(())
+            }));
+        } else {
+            task::spawn(async move {
+                match mirror_response(&m, 10).await {
+                    Ok(res) => {
+                        sc.send((m.clone(), res)).await;
+                    }
+                    Err(_) => (),
+                }
+            });
+        }
     }
 
     r

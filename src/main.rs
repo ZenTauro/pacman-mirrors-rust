@@ -80,6 +80,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         );
 
     let args = &app.get_matches();
+    let mut take = args.value_of("fasttrack").map(|v| {
+        v.parse::<usize>().expect("Failed to parse")
+    });
+    let mut timeout = args.value_of("timeout").map(|v| {
+        let val = v.parse::<u64>().expect("Failed to parse");
+        std::time::Duration::from_secs(val)
+    });
 
     let _pacman_mirrors = PacmanMirrors::default();
     if is_networkup().await {
@@ -93,10 +100,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     }
 
     let mirs = mirrors::fetch_mirs().await;
-    let received = build_mirror_list(&mirs).await;
+    let received = build_mirror_list(&mirs, timeout).await;
     let mut res = Vec::new();
 
     while let Some((val, timestamp)) = received.recv().await {
+        match take {
+            Some(0) => break,
+            Some(v) => take = take.map(|v| v - 1),
+            None    => (),
+        };
+
         let col = if timestamp < 2.0 {
             format!("{:.5}", timestamp).green()
         } else {
