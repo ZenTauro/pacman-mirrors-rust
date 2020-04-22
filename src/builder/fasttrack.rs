@@ -19,7 +19,7 @@ use crate::functions::mirror_response;
 use async_std::io;
 use async_std::sync::{channel, Receiver};
 use async_std::task;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub async fn build_mirror_list(
     mirror_list: &Vec<String>,
@@ -34,23 +34,17 @@ pub async fn build_mirror_list(
         info!("Timeout is: {:?}", timeout);
 
         if let Some(t) = timeout {
-            info!("Spawining with timeout {:?}", t);
             task::spawn(io::timeout(t, async move {
-                match mirror_response(&m, 10).await {
-                    Ok(res) => {
-                        sc.send((m.clone(), res)).await;
-                    }
-                    Err(_) => (),
+                if let Ok(res) = mirror_response(&m, 10).await {
+                    sc.send((m.clone(), res)).await;
                 }
+
                 Ok(())
             }));
         } else {
             task::spawn(async move {
-                match mirror_response(&m, 10).await {
-                    Ok(res) => {
-                        sc.send((m.clone(), res)).await;
-                    }
-                    Err(_) => (),
+                if let Ok(res) = mirror_response(&m, 10).await {
+                    sc.send((m.clone(), res)).await;
                 }
             });
         }

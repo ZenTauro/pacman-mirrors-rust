@@ -27,15 +27,35 @@ mod pacman_mirrors;
 use crate::builder::build_initial_list;
 use crate::builder::build_mirror_list;
 use crate::functions::*;
+
 use clap::{App, Arg};
 use colored::*;
 use pacman_mirrors::PacmanMirrors;
 use pretty_env_logger as logger;
-use std::io;
+
+use async_std::io;
+use async_std::prelude::*;
+use async_std::fs::OpenOptions;
+
+use std::process::{exit, Command};
 
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     logger::init();
+
+    let uid = geteuid();
+    //     : usize = std::str::from_utf8(
+    //     Command::new("id")
+    //         .arg("-u")
+    //         .output()?
+    //         .stdout
+    //         .as_slice()
+    // )?.parse()?;
+
+    if uid != 0 {
+        error!("This process must be run as root");
+        exit(1);
+    }
 
     let app = App::new("pacman-mirrors")
         .version("0.1.0")
@@ -120,7 +140,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         res.push(val);
     }
 
-    println!("{}", build_filestring(res));
+    let file_string =  build_filestring(res);
+    let mut mirror_file = OpenOptions::new()
+        .write(true)
+        .open(config::MIRROR_FILE)
+        .await?;
+
+    mirror_file.write_all(file_string.as_ref());
 
     Ok(())
 }

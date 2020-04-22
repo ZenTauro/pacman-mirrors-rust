@@ -24,3 +24,8 @@ pub use self::config_fn::*;
 pub use self::http_fn::*;
 pub use self::check_network::*;
 pub use self::mirror_file::*;
+
+pub fn geteuid() -> u16 {
+    extern { fn geteuid() -> u16; }
+    unsafe { geteuid() }
+}
