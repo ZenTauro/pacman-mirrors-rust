@@ -24,6 +24,7 @@ mod functions;
 mod mirrors;
 mod pacman_mirrors;
 
+use std::cmp::Ordering::Equal;
 use crate::builder::build_initial_list;
 use crate::builder::build_mirror_list;
 use crate::functions::*;
@@ -37,25 +38,11 @@ use async_std::io;
 use async_std::prelude::*;
 use async_std::fs::OpenOptions;
 
-use std::process::{exit, Command};
+use std::process::exit;
 
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     logger::init();
-
-    let uid = geteuid();
-    //     : usize = std::str::from_utf8(
-    //     Command::new("id")
-    //         .arg("-u")
-    //         .output()?
-    //         .stdout
-    //         .as_slice()
-    // )?.parse()?;
-
-    if uid != 0 {
-        error!("This process must be run as root");
-        exit(1);
-    }
 
     let app = App::new("pacman-mirrors")
         .version("0.1.0")
@@ -101,12 +88,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
 
     let args = &app.get_matches();
     let mut take = args.value_of("fasttrack").map(|v| {
-        v.parse::<usize>().expect("Failed to parse")
+        v.parse::<usize>().expect("Failed to parse number of fasttrack results")
     });
-    let mut timeout = args.value_of("timeout").map(|v| {
-        let val = v.parse::<u64>().expect("Failed to parse");
+    let timeout = args.value_of("timeout").map(|v| {
+        let val: u64 = v.parse().expect("Failed to parse timeout");
         std::time::Duration::from_secs(val)
     });
+
+    let uid = geteuid();
+
+    if uid != 0 {
+        error!("This process must be run as root");
+        exit(1);
+    }
 
     let _pacman_mirrors = PacmanMirrors::default();
     if is_networkup().await {
@@ -122,11 +116,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     let mirs = mirrors::fetch_mirs().await;
     let received = build_mirror_list(&mirs, timeout).await;
     let mut res = Vec::new();
+    let mut ret = Vec::new();
 
-    while let Some((val, timestamp)) = received.recv().await {
+    while let Ok((val, timestamp)) = received.recv().await {
         match take {
             Some(0) => break,
-            Some(v) => take = take.map(|v| v - 1),
+            Some(_) => take = take.map(|v| v - 1),
             None    => (),
         };
 
@@ -137,16 +132,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         };
 
         eprintln!("    {} - {}", col, val);
-        res.push(val);
+        ret.push((timestamp, val));
+    }
+
+    ret.sort_by(|(k1, _), (k2, _)| {
+        k1.partial_cmp(k2).unwrap_or(Equal)
+    });
+
+    for (_, v) in ret {
+        res.push(v);
     }
 
     let file_string =  build_filestring(res);
     let mut mirror_file = OpenOptions::new()
         .write(true)
-        .open(config::MIRROR_FILE)
+        .open(config::MIRROR_LIST)
         .await?;
 
-    mirror_file.write_all(file_string.as_ref());
+    mirror_file
+        .write_all(file_string.as_ref()).await
+        .expect("Writing to /etc/pacman.d/mirrorlist shouldn't fail");
 
     Ok(())
 }
